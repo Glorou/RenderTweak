@@ -13,5 +13,15 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Visible>false</Visible>
     </Content>
+    <Content Include="RenderAdjust.json" />
+  </ItemGroup>
+    
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  
+           <OutputPath>C:\Users\Karou\AppData\Roaming\XIVLauncher\devPlugins\$(MSBuildProjectName)</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="9.0.4" />
   </ItemGroup>
 </Project>

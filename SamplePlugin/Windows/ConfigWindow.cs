@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
 
-namespace SamplePlugin.Windows;
+namespace RenderAdjust.Windows;
 
 public class ConfigWindow : Window, IDisposable
 {
@@ -41,18 +41,18 @@ public class ConfigWindow : Window, IDisposable
     public override void Draw()
     {
         // can't ref a property, so use a local copy
-        var configValue = Configuration.SomePropertyToBeSavedAndWithADefault;
-        if (ImGui.Checkbox("Random Config Bool", ref configValue))
+        var enabled = Configuration.Enabled;
+        if (ImGui.Checkbox("enabled", ref enabled))
         {
-            Configuration.SomePropertyToBeSavedAndWithADefault = configValue;
+            Configuration.Enabled = enabled;
             // can save immediately on change, if you don't want to provide a "Save and Close" button
             Configuration.Save();
         }
 
-        var movable = Configuration.IsConfigWindowMovable;
-        if (ImGui.Checkbox("Movable Config Window", ref movable))
+        var target = Configuration.TargetFPS;
+        if (ImGui.InputInt("Movable Config Window", ref target))
         {
-            Configuration.IsConfigWindowMovable = movable;
+            Configuration.TargetFPS = target;
             Configuration.Save();
         }
     }
