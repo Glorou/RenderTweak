@@ -66,6 +66,10 @@ public sealed class Plugin : IDalamudPlugin
         // Use /xllog to open the log window in-game
         // Example Output: 00:57:54.959 | INF | [SamplePlugin] ===A cool log message from Sample Plugin===
         Service.Log.Information($"===A cool log message from {Service.PluginInterface.Manifest.Name}===");
+        if (Configuration.Enabled == true)
+        {
+            Enable();
+        }
 
     }
 
