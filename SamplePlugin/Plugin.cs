@@ -12,6 +12,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using RenderAdjust.Windows;
+using System;
+using static Lumina.Models.Materials.Texture;
 namespace RenderAdjust;
 
 /*.rdata:0000000142056BC0 dword_142056BC0 dd 819 
@@ -24,15 +26,21 @@ namespace RenderAdjust;
 public sealed class Plugin : IDalamudPlugin
 {
 
-    private const string CommandName = "/pmycommand";
+    private const string CommandName = "/render";
 
     public Configuration Configuration { get; init; }
 
-    public readonly WindowSystem WindowSystem = new("SamplePlugin");
+    public readonly WindowSystem WindowSystem = new("Render Adjust");
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
 
     private readonly System.Timers.Timer _timer = new();
+
+    public float AvgGPUUsage = 0.0f;
+    public float AvgFPS = 0.0f;
+
+    public float[] FPSSamples = [0.0f, 0.0f, 0.0f, 0.0f, 0.0f];
+    public float[] GPUUsageSamples = [0.0f,0.0f,0.0f,0.0f,0.0f];
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -66,18 +74,17 @@ public sealed class Plugin : IDalamudPlugin
         // Use /xllog to open the log window in-game
         // Example Output: 00:57:54.959 | INF | [SamplePlugin] ===A cool log message from Sample Plugin===
         Service.Log.Information($"===A cool log message from {Service.PluginInterface.Manifest.Name}===");
-        if (Configuration.Enabled == true)
-        {
-            Enable();
-        }
+
+        Enable();
+
 
     }
 
-    
-    void Enable()
+
+    public void Enable()
     {
         _timer.Elapsed += Timer_Elapsed;
-        _timer.Interval = 10000; // every 10 seconds
+        _timer.Interval = 3000; // every 3 seconds
         _timer.Start();
     }
     public void Disable()
@@ -94,31 +101,44 @@ public sealed class Plugin : IDalamudPlugin
         Disable();
         _timer.Dispose();
 
+
         Service.CommandManager.RemoveHandler(CommandName);
     }
 
     private void Timer_Elapsed(object? sender, ElapsedEventArgs e)
     {
-        var usage = GetGPUUsage(GetCounters()).Result;
-        var fps = GetFPS();
-        uint currentSetting;
-        Service.GameConfig.TryGet(Dalamud.Game.Config.SystemConfigOption.DisplayObjectLimitType, out currentSetting);
+        if (Configuration.Enabled == true)
+        {
+            var usage = GetGPUUsage(GetCounters()).Result;
+            var fps = GetFPS();
+            GetAverage(fps, usage);
 
-        if (currentSetting < 4 && (usage > 80 || fps < Configuration.TargetFPS * 0.8f)) // Check if we're already at an extrema, if we are then no point in changing
-        {
-            Service.Log.Information($"Going down towards min {currentSetting} {usage} {fps} {Configuration.TargetFPS}");
-            Service.GameConfig.Set(Dalamud.Game.Config.SystemConfigOption.DisplayObjectLimitType, currentSetting + 1);
-        }
-        else if (currentSetting > 0 && usage < 80 && fps > Configuration.TargetFPS * 0.95f)
-        {
-            Service.Log.Information($"Going up towards max {currentSetting} {usage} {GetFPS()} {Configuration.TargetFPS}");
-            Service.GameConfig.Set(Dalamud.Game.Config.SystemConfigOption.DisplayObjectLimitType, currentSetting - 1);
+            uint currentSetting;
+            Service.GameConfig.TryGet(Dalamud.Game.Config.SystemConfigOption.DisplayObjectLimitType, out currentSetting);
+            if (AvgFPS == 0.0 || AvgGPUUsage == 0.0)
+            {
+                return;
+            }
+
+            if (currentSetting < 4 && (AvgGPUUsage > 80 || AvgFPS < Configuration.TargetFPS * 0.8f)) // Check if we're already at an extrema, if we are then no point in changing
+            {
+                Service.Log.Information($"Going down towards min {currentSetting} {AvgGPUUsage} {AvgFPS} {Configuration.TargetFPS}");
+                Service.GameConfig.Set(Dalamud.Game.Config.SystemConfigOption.DisplayObjectLimitType, currentSetting + 1);
+            }
+            else if (currentSetting > 0 && AvgGPUUsage < 80 && AvgFPS > Configuration.TargetFPS * 0.95f)
+            {
+                Service.Log.Information($"Going up towards max {currentSetting} {AvgGPUUsage} {AvgFPS} {Configuration.TargetFPS}");
+                Service.GameConfig.Set(Dalamud.Game.Config.SystemConfigOption.DisplayObjectLimitType, currentSetting - 1);
+            }
         }
         return;
     }
     private void OnCommand(string command, string args)
     {
         // in response to the slash command, just toggle the display status of our main ui
+        Service.Log.Information($"{GPUUsageSamples[0]} {GPUUsageSamples[1]} + {GPUUsageSamples[2]} + {GPUUsageSamples[3]} + {GPUUsageSamples[4]}");
+        
+        Service.Log.Information($"{FPSSamples[0]} + {FPSSamples[1]} + {FPSSamples[2]} + {FPSSamples[3]} + {FPSSamples[4]}");
         ToggleMainUI();
     }
 
@@ -127,7 +147,19 @@ public sealed class Plugin : IDalamudPlugin
     public void ToggleConfigUI() => ConfigWindow.Toggle();
     public void ToggleMainUI() => MainWindow.Toggle();
 
+    public void GetAverage(float fps, float usage)
+    {
+        Array.Copy(FPSSamples, 1, FPSSamples, 0, FPSSamples.Length - 1);
+        FPSSamples[4] = fps;
+        Array.Copy(GPUUsageSamples, 1, GPUUsageSamples, 0, GPUUsageSamples.Length - 1);
+        GPUUsageSamples[4] = usage;
 
+        if (FPSSamples[0] != 0.0f && GPUUsageSamples[0] != 0.0f)
+        {
+            AvgGPUUsage = (GPUUsageSamples[0] + GPUUsageSamples[1] + GPUUsageSamples[2] + GPUUsageSamples[3] + GPUUsageSamples[4]) / 5;
+            AvgFPS = (FPSSamples[0] + FPSSamples[1] + FPSSamples[2] + FPSSamples[3] + FPSSamples[4]) / 5;
+        }
+    }
 
     public List<PerformanceCounter> GetCounters()
     {
@@ -174,4 +206,5 @@ public sealed class Plugin : IDalamudPlugin
         var temp = 1 / Service.Framework.UpdateDelta.TotalSeconds;
         return (float)temp;
     }
+
 }
