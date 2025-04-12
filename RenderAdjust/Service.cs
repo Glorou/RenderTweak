@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Dalamud.Game;
 
 namespace RenderAdjust
 {
@@ -19,5 +20,7 @@ namespace RenderAdjust
         [PluginService] internal static IPluginLog Log { get; private set; } = null!;
         [PluginService] public static IGameConfig GameConfig { get; private set; } = null!;
         [PluginService] public static IFramework Framework { get; private set; } = null!;
+        [PluginService] public static ISigScanner SigScanner { get; private set; } = null!;
+
     }
 }

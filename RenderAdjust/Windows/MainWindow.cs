@@ -37,7 +37,7 @@ public class MainWindow : Window, IDisposable
         // These expect formatting parameter if any part of the text contains a "%", which we can't
         // provide through our bindings, leading to a Crash to Desktop.
         // Replacements can be found in the ImGuiHelpers Class
-        ImGui.TextUnformatted($"The random config bool is {Plugin.Configuration.SomePropertyToBeSavedAndWithADefault}");
+        ImGui.TextUnformatted($"The random config bool is {Plugin.Configuration.Enabled}");
 
         if (ImGui.Button("Show Settings"))
         {
@@ -73,6 +73,9 @@ public class MainWindow : Window, IDisposable
                 // Example for other services that Dalamud provides.
                 // ClientState provides a wrapper filled with information about the local player object and client.
 
+                ImGui.TextUnformatted($"{Plugin.GPUUsageSamples[0]}, {Plugin.GPUUsageSamples[1]}, {Plugin.GPUUsageSamples[2]},  {Plugin.GPUUsageSamples[3]},  {Plugin.GPUUsageSamples[4]} : {Plugin.AvgGPUUsage}");
+
+                ImGui.TextUnformatted($"{Plugin.FPSSamples[0]},  {Plugin.FPSSamples[1]},  {Plugin.FPSSamples[2]},  {Plugin.FPSSamples[3]},  {Plugin.FPSSamples[4]} : {Plugin.AvgFPS}");
                 var localPlayer = Service.ClientState.LocalPlayer;
                 if (localPlayer == null)
                 {
