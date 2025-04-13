@@ -42,6 +42,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public float[] FPSSamples = [0.0f, 0.0f, 0.0f, 0.0f, 0.0f];
     public float[] GPUUsageSamples = [0.0f,0.0f,0.0f,0.0f,0.0f];
+    public List<PerformanceCounter> counters = GetCounters();
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -110,7 +111,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         if (Configuration.Enabled == true && !Configuration.Wine)
         {
-            var usage = GetGPUUsage(GetCounters()).Result;
+            var usage = GetGPUUsage(counters).Result;
             var fps = GetFPS();
             GetAverage(fps, usage);
 
@@ -211,7 +212,7 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
-    public List<PerformanceCounter> GetCounters()
+    public static List<PerformanceCounter> GetCounters()
     {
         var category = new PerformanceCounterCategory("GPU Engine");
         var names = category.GetInstanceNames();
