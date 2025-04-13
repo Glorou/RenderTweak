@@ -2,7 +2,7 @@
   "Author": "Karou",
   "Name": "Render Adjust",
   "Punchline": "Dynamically adjust your object rendering settings.",
-  "Description": "Allows you to dynamically adjust the in-game setting for rendered objects by FPS (and GPU Usage if you're on windows) and allows you to set a custom number of rendered objects manually",
+  "Description": "Allows you to dynamically adjust the in-game setting for rendered objects by FPS (and GPU Usage if you're on windows) and allows you to set a custom number of rendered objects manually. Uses GPU usage and FPS on Windows, and FPS only on Wine.",
   "ApplicableVersion": "any",
   "Tags": [
     "plugin",
