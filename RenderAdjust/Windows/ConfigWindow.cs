@@ -40,7 +40,7 @@ public class ConfigWindow : Window, IDisposable
     {
         // can't ref a property, so use a local copy
         var enabled = Configuration.Enabled;
-        if (ImGui.Checkbox("Enabled", ref enabled))
+        if (ImGui.Checkbox("Enable dynamic setting", ref enabled))
         {
             Configuration.Enabled = enabled;
             // can save immediately on change, if you don't want to provide a "Save and Close" button
@@ -90,7 +90,10 @@ public class ConfigWindow : Window, IDisposable
         }
         if (ImGui.Button("Set limit"))
         {
-            Plugin.Override(Configuration.ObjectOverrideNum);
+            if (overrideEnabled) {
+                Plugin.Override(Configuration.ObjectOverrideNum);
+            }
+
         }
 
     }

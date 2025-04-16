@@ -15,6 +15,7 @@ using RenderAdjust.Windows;
 using System;
 using static Lumina.Models.Materials.Texture;
 using Dalamud;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 namespace RenderAdjust;
 
 /*.rdata:0000000142056BC0 dword_142056BC0 dd 819 
@@ -27,7 +28,7 @@ namespace RenderAdjust;
 public sealed class Plugin : IDalamudPlugin
 {
 
-    private const string CommandName = "/render";
+    //private const string CommandName = "/render";
 
     public Configuration Configuration { get; init; }
 
@@ -42,6 +43,8 @@ public sealed class Plugin : IDalamudPlugin
     public float[] FPSSamples = [0.0f, 0.0f, 0.0f, 0.0f, 0.0f];
     public float[] GPUUsageSamples = [0.0f,0.0f,0.0f,0.0f,0.0f];
     public List<PerformanceCounter> counters = GetCounters();
+    public static nint address = 0;
+
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -55,11 +58,11 @@ public sealed class Plugin : IDalamudPlugin
 
         WindowSystem.AddWindow(ConfigWindow);
 
-        Service.CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
+        /*Service.CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
             HelpMessage = "A useful message to display in /xlhelp"
         });
-
+        */
         Service.PluginInterface.UiBuilder.Draw += DrawUI;
 
         // This adds a button to the plugin installer entry of this plugin which allows
@@ -75,9 +78,18 @@ public sealed class Plugin : IDalamudPlugin
         Service.Log.Information($"==={Service.PluginInterface.Manifest.Name} starting up===");
 
         Enable();
+        try
+        {
+            address = Service.SigScanner.ScanText("BE ?? ?? ?? ?? 89 74 24 58");
+        }
+        catch (Exception ex)
+        {
+            Service.Log.Error($"Unable to find address : {ex}");
+        }
 
 
-    }
+
+        }
 
 
     public void Enable()
@@ -85,6 +97,8 @@ public sealed class Plugin : IDalamudPlugin
         _timer.Elapsed += Timer_Elapsed;
         _timer.Interval = 3000; // every 3 seconds
         _timer.Start();
+
+        
     }
     public void Disable()
     {
@@ -98,9 +112,9 @@ public sealed class Plugin : IDalamudPlugin
         ConfigWindow.Dispose();
         Disable();
         _timer.Dispose();
+        Override(50); //reset the memory to what it was
 
-
-        Service.CommandManager.RemoveHandler(CommandName);
+        //Service.CommandManager.RemoveHandler(CommandName);
     }
 
     private void Timer_Elapsed(object? sender, ElapsedEventArgs e)
@@ -121,12 +135,12 @@ public sealed class Plugin : IDalamudPlugin
             {
                 if (currentSetting < 4 && ((AvgGPUUsage > 80 && AvgFPS < Configuration.TargetFPS * 0.8f) || (AvgFPS < Configuration.TargetFPS * 0.65f))) // Check if we're already at an extrema, if we are then no point in changing
                 {
-                    Service.Log.Information($"Going down towards min {currentSetting} {AvgGPUUsage} {AvgFPS} {Configuration.TargetFPS}");
+                    Service.Log.Verbose($"Going down towards min {currentSetting} {AvgGPUUsage} {AvgFPS} {Configuration.TargetFPS}");
                     Service.GameConfig.Set(Dalamud.Game.Config.SystemConfigOption.DisplayObjectLimitType, currentSetting + 1);
                 }
                 else if (currentSetting > 0 && ((AvgGPUUsage < 80 && AvgFPS > Configuration.TargetFPS * 0.95f) || (AvgGPUUsage < 40))) // cant put it at 1.0 for stuff like frame limiters and chill frames, accounting for error we'd never see this condition otherwise
                 {
-                    Service.Log.Information($"Going up towards max {currentSetting} {AvgGPUUsage} {AvgFPS} {Configuration.TargetFPS}");
+                    Service.Log.Verbose($"Going up towards max {currentSetting} {AvgGPUUsage} {AvgFPS} {Configuration.TargetFPS}");
                     Service.GameConfig.Set(Dalamud.Game.Config.SystemConfigOption.DisplayObjectLimitType, currentSetting - 1);
                 }
             }
@@ -147,12 +161,12 @@ public sealed class Plugin : IDalamudPlugin
             {
                 if (currentSetting < 4 && AvgFPS < Configuration.TargetFPS * 0.7f) // Check if we're already at an extrema, if we are then no point in changing
                 {
-                    Service.Log.Information($"Going down towards min {currentSetting} {AvgGPUUsage} {AvgFPS} {Configuration.TargetFPS}");
+                    Service.Log.Verbose($"Going down towards min {currentSetting} {AvgGPUUsage} {AvgFPS} {Configuration.TargetFPS}");
                     Service.GameConfig.Set(Dalamud.Game.Config.SystemConfigOption.DisplayObjectLimitType, currentSetting + 1);
                 }
                 else if (currentSetting > 0 && AvgFPS > Configuration.TargetFPS * 0.95f) // cant put it at 1.0 for stuff like frame limiters and chill frames, accounting for error we'd never see this condition otherwise
                 {
-                    Service.Log.Information($"Going up towards max {currentSetting} {AvgGPUUsage} {AvgFPS} {Configuration.TargetFPS}");
+                    Service.Log.Verbose($"Going up towards max {currentSetting} {AvgGPUUsage} {AvgFPS} {Configuration.TargetFPS}");
                     Service.GameConfig.Set(Dalamud.Game.Config.SystemConfigOption.DisplayObjectLimitType, currentSetting - 1);
                 }
             }
@@ -171,8 +185,11 @@ public sealed class Plugin : IDalamudPlugin
             {
                 Service.Log.Verbose("object limit = " + limitType); //4 = minimum which is the fallback to 50
             }
-            Service.GameConfig.Set(Dalamud.Game.Config.SystemConfigOption.DisplayObjectLimitType, 4);
-            var address = Service.SigScanner.ScanText("BE ?? ?? ?? ?? 89 74 24 58");
+            if(address == 0)
+            {
+                return;
+            }
+
             SafeMemory.Write(address + 1, (byte)limit); //We overwrite the 50 with the value we want
             SafeMemory.Write(address + 2, (byte)0);
             SafeMemory.Write(address + 3, (byte)0);
@@ -183,9 +200,9 @@ public sealed class Plugin : IDalamudPlugin
     private void OnCommand(string command, string args)
     {
         // in response to the slash command, just toggle the display status of our main ui
-        Service.Log.Information($"{GPUUsageSamples[0]} {GPUUsageSamples[1]} + {GPUUsageSamples[2]} + {GPUUsageSamples[3]} + {GPUUsageSamples[4]}");
+        Service.Log.Verbose($"{GPUUsageSamples[0]} {GPUUsageSamples[1]} + {GPUUsageSamples[2]} + {GPUUsageSamples[3]} + {GPUUsageSamples[4]}");
         
-        Service.Log.Information($"{FPSSamples[0]} + {FPSSamples[1]} + {FPSSamples[2]} + {FPSSamples[3]} + {FPSSamples[4]}");
+        Service.Log.Verbose($"{FPSSamples[0]} + {FPSSamples[1]} + {FPSSamples[2]} + {FPSSamples[3]} + {FPSSamples[4]}");
         //ToggleMainUI();
     }
 
