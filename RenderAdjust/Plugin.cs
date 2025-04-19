@@ -16,6 +16,8 @@ using System;
 using static Lumina.Models.Materials.Texture;
 using Dalamud;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using FFXIVClientStructs.FFXIV.Client.Game;
 namespace RenderAdjust;
 
 /*.rdata:0000000142056BC0 dword_142056BC0 dd 819 
@@ -44,7 +46,9 @@ public sealed class Plugin : IDalamudPlugin
     public float[] GPUUsageSamples = [0.0f,0.0f,0.0f,0.0f,0.0f];
     public List<PerformanceCounter> counters = GetCounters();
     public static nint address = 0;
-
+    public static int buttonCounter = 0;
+    public static int lastSeen = 0;
+    public static int ActualRender = 0;
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -61,13 +65,14 @@ public sealed class Plugin : IDalamudPlugin
         /*Service.CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
             HelpMessage = "A useful message to display in /xlhelp"
-        });
-        */
+        });*/
+        
         Service.PluginInterface.UiBuilder.Draw += DrawUI;
 
         // This adds a button to the plugin installer entry of this plugin which allows
         // to toggle the display status of the configuration ui
         Service.PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
+        Service.Framework.Update += OnFrameworkUpdate;
 
         // Adds another button that is doing the same but for the main ui of the plugin
         //Service.PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
@@ -89,11 +94,16 @@ public sealed class Plugin : IDalamudPlugin
 
 
 
-        }
+    }
+
 
 
     public void Enable()
     {
+        if(Service.GameConfig.System.TryGet("DisplayObjectLimitType", out uint limitType))
+        {
+            Configuration.UserSetting = limitType;
+        }
         _timer.Elapsed += Timer_Elapsed;
         _timer.Interval = 3000; // every 3 seconds
         _timer.Start();
@@ -103,8 +113,29 @@ public sealed class Plugin : IDalamudPlugin
     public void Disable()
     {
         _timer.Stop();
+        Service.GameConfig.Set(Dalamud.Game.Config.SystemConfigOption.DisplayObjectLimitType,Configuration.UserSetting);
     }
 
+    public unsafe void OnFrameworkUpdate(IFramework framework)
+    {
+        bool lockout = (!(TerritoryInfo.Instance()->InSanctuary)|| GameMain.IsInPvPArea() || Service.Condition[56] || Service.Condition[34] || Service.Condition[26]);
+        if (buttonCounter != lastSeen || lockout || ActualRender != Configuration.ObjectOverrideNum)
+        {
+            lastSeen = buttonCounter;
+            if (Configuration.Override == true && Configuration.ObjectOverrideNum < 50 && lockout && ActualRender == Configuration.ObjectOverrideNum)
+            {
+                Override(50);
+
+            } else if (Configuration.Override == true && !lockout)
+            {
+                Override(Configuration.ObjectOverrideNum);
+            }
+        }
+
+
+
+
+    }
     public void Dispose()
     {
         WindowSystem.RemoveAllWindows();
@@ -189,19 +220,21 @@ public sealed class Plugin : IDalamudPlugin
             {
                 return;
             }
-
+            Service.GameConfig.Set(Dalamud.Game.Config.SystemConfigOption.DisplayObjectLimitType, 4);
             SafeMemory.Write(address + 1, (byte)limit); //We overwrite the 50 with the value we want
             SafeMemory.Write(address + 2, (byte)0);
             SafeMemory.Write(address + 3, (byte)0);
             SafeMemory.Write(address + 4, (byte)0);
         });
+        ActualRender = limit;
+
     }
 
-    private void OnCommand(string command, string args)
+    private unsafe void OnCommand(string command, string args)
     {
         // in response to the slash command, just toggle the display status of our main ui
         Service.Log.Verbose($"{GPUUsageSamples[0]} {GPUUsageSamples[1]} + {GPUUsageSamples[2]} + {GPUUsageSamples[3]} + {GPUUsageSamples[4]}");
-        
+        Service.Log.Verbose($"{TerritoryInfo.Instance()->InSanctuary}");
         Service.Log.Verbose($"{FPSSamples[0]} + {FPSSamples[1]} + {FPSSamples[2]} + {FPSSamples[3]} + {FPSSamples[4]}");
         //ToggleMainUI();
     }

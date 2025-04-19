@@ -16,8 +16,11 @@ public class Configuration : IPluginConfiguration
     public bool Enabled { get; set; } = true;
 
     public bool Override { get; set; } = false;
+    
+    public uint UserSetting { get; set; } = 0;
 
     public int ObjectOverrideNum { get; set; } = 50;
+
     public bool Wine = Util.IsWine();
     // the below exist just to make saving less cumbersome
     public void Save()

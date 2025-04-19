@@ -67,12 +67,14 @@ public class ConfigWindow : Window, IDisposable
             Configuration.Override = overrideEnabled;
             if (!overrideEnabled)
             {
+
                 Plugin.Override(50);
             }
             // can save immediately on change, if you don't want to provide a "Save and Close" button
             Configuration.Save();
         }
         ImGui.TextUnformatted("Minimum character limit");    
+
         var overrideLimit = Configuration.ObjectOverrideNum;
         ImGui.InputInt("##minLimit", ref overrideLimit);
         if (ImGui.IsItemDeactivatedAfterEdit())
@@ -86,12 +88,13 @@ public class ConfigWindow : Window, IDisposable
             }
             Configuration.ObjectOverrideNum = overrideLimit;
             // can save immediately on change, if you don't want to provide a "Save and Close" button
-            Configuration.Save();
+
         }
         if (ImGui.Button("Set limit"))
         {
             if (overrideEnabled) {
-                Plugin.Override(Configuration.ObjectOverrideNum);
+                Configuration.Save();
+                Plugin.buttonCounter++;
             }
 
         }
