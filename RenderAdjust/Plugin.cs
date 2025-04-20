@@ -15,6 +15,7 @@ using RenderAdjust.Windows;
 using System;
 using static Lumina.Models.Materials.Texture;
 using Dalamud;
+using Dalamud.Game.ClientState.Conditions;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.Game;
@@ -118,7 +119,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public unsafe void OnFrameworkUpdate(IFramework framework)
     {
-        bool lockout = (!(TerritoryInfo.Instance()->InSanctuary)|| GameMain.IsInPvPArea() || Service.Condition[56] || Service.Condition[34] || Service.Condition[26]);
+        bool lockout = (!(TerritoryInfo.Instance()->InSanctuary)|| GameMain.IsInPvPArea() || Service.Condition.Any(ConditionFlag.BoundByDuty, ConditionFlag.OccupiedSummoningBell, ConditionFlag.InCombat, ConditionFlag.BoundByDuty56));
         if (buttonCounter != lastSeen || lockout || ActualRender != Configuration.ObjectOverrideNum)
         {
             lastSeen = buttonCounter;
